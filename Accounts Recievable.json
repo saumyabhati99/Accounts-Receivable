@@ -1,0 +1,211 @@
+{
+  "name": "Accounts Recievable",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        -160
+      ],
+      "id": "60032b2c-8499-475a-baf6-169116c01220",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "11c__U-figfzxFhXDNNjkVgosDyECFvuBD6d3hUA4EWM",
+          "mode": "list",
+          "cachedResultName": "Client invoice ",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/11c__U-figfzxFhXDNNjkVgosDyECFvuBD6d3hUA4EWM/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 917871494,
+          "mode": "list",
+          "cachedResultName": "Sheet2",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/11c__U-figfzxFhXDNNjkVgosDyECFvuBD6d3hUA4EWM/edit#gid=917871494"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        224,
+        -160
+      ],
+      "id": "d5bb4efb-96a2-4dab-beb8-6c8a282f4378",
+      "name": "Get row(s) in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "ny6GxkCQnHWYWsf7",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "3ae05d11-39cd-4910-b407-75d1f033d06b",
+              "leftValue": "={{ $json.Update }}",
+              "rightValue": "Unpaid",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "0ab6d4a6-723a-413e-b569-e460e3ec3a2c",
+              "leftValue": "={{ Math.floor($now.diff(DateTime.fromISO($json[\"Due Date\"]), 'days').as('days')) }}",
+              "rightValue": 3,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.3,
+      "position": [
+        448,
+        -160
+      ],
+      "id": "be5afec5-c44e-4014-acd9-f5db6d485628",
+      "name": "Filter"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemma-3-1b-it",
+          "mode": "list",
+          "cachedResultName": "models/gemma-3-1b-it"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You are an Accounts Receivable specialist. \nWrite a payment reminder email.\n\nRules:\n- Start with \"Dear {{ $json[\"Name\"] }},\"\n- No subject line\n- Max 100 words\n- Mention Invoice ID and Amount\n- End with \"Best regards, The Accounts Receivable Team\"\n\nTone based on Days Overdue:\n- 1-7 days: Friendly\n- 8-14 days: Firm\n- 15-29 days: Urgent\n- 30+ days: Final Notice\n\nInvoice ID: {{ $json[\"Invoice ID\"] }}\nAmount: ${{ $json[\"Invoice Amount\"] }}\nDue Date: {{ $json[\"Due Date\"] }}\nDays Overdue: {{ $now.diff(DateTime.fromISO($json[\"Due Date\"]), 'days') }}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {
+          "maxOutputTokens": 500,
+          "temperature": 0.4
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        672,
+        -160
+      ],
+      "id": "095e11cf-5601-4c77-a901-2ab2d21a66dd",
+      "name": "Message a model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "tz0aeYSJE4XwqFzu",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "draft",
+        "subject": "={{ 'Reminder: Invoice ' + $('Filter').item.json[\"Invoice ID\"] + ' is Overdue' }}",
+        "message": "={{ $('Message a model').item.json.content.parts[0].text.replace(/\\\\n/g, '\\n') }}",
+        "options": {
+          "sendTo": "={{ $('Filter').item.json[\"Email\"] }}"
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1024,
+        -160
+      ],
+      "id": "e51c57ac-6caa-4b18-972f-50b9eec3ff84",
+      "name": "Create a draft",
+      "webhookId": "63d30767-b1ec-4201-b705-24370cf01eea",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "umqI0JyQOJza8GcA",
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Get row(s) in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet": {
+      "main": [
+        [
+          {
+            "node": "Filter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter": {
+      "main": [
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "Create a draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "05ffce30-7706-4ab5-9c0c-69f6ad59570f",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "5fd1c9a070c3edf8e6331f8f8e580cedc209b2b394935ba6852ad051a86a0624"
+  },
+  "id": "FJDTzHlyAR4F664b",
+  "tags": []
+}
